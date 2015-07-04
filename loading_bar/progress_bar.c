@@ -77,7 +77,7 @@ update_progress(double percent, progress_bar_t *bar){
 		//Use springf to turn our display_percent into a nice string, then copy only the first 3
 		//characters to bar_string so we don't prematurely terminate the bar_string
 		display_percent = ((int)(percent * 100));
-		if (0 > sprintf(tmp, "%3i", display_percent)){
+		if (0 > snprintf(tmp, sizeof(tmp), "%3i", display_percent)){
 			printf("Something went wrong trying to do strings in update_progress: %s", strerror(errno));
 			return errno;
 		}
