@@ -26,7 +26,7 @@ progress_bar_t *
 setup_progress(char bar_char, char bar_start, char bar_end, int bar_width, bool verbose){
 	progress_bar_t *new_bar = malloc(sizeof(progress_bar_t));
 	if (new_bar == NULL){
-		printf("Something went wrong trying to allocate memory in setup_progress: %s", strerror(errno));
+		printf("Something went wrong trying to allocate memory for the new bar in setup_progress: %s", strerror(errno));
 		return NULL;
 	}
 	new_bar->bar_char = bar_char;
@@ -34,7 +34,7 @@ setup_progress(char bar_char, char bar_start, char bar_end, int bar_width, bool 
 	new_bar->verbose = verbose;
 	new_bar->bar_string = malloc(bar_width + 1);
 	if (new_bar->bar_string == NULL){
-		printf("Something went wrong trying to allocate memory in setup_progress: %s", strerror(errno));
+		printf("Something went wrong trying to allocate memory for the bar string in setup_progress: %s", strerror(errno));
 		return NULL;	
 	}
 	memset(new_bar->bar_string, ' ', bar_width + 1);
@@ -43,11 +43,11 @@ setup_progress(char bar_char, char bar_start, char bar_end, int bar_width, bool 
 	new_bar->bar_string[bar_width] = 0;
 
 	if (verbose){
-		//Make space for a percent counter at the right side of the progress bar
+		//Make space for a percent counter at the right side of the progress bar, and insert the bar end
+		//character. Use bar_width-5 because we enforce that the progress % will always be <=100
 		new_bar->bar_string[bar_width - 5] = bar_end;
 		new_bar->bar_string[bar_width - 1] = '%';
 	}else{
-		//
 		new_bar->bar_string[bar_width - 1] = bar_end; 
 	}
 	return new_bar;
@@ -58,14 +58,16 @@ setup_progress(char bar_char, char bar_start, char bar_end, int bar_width, bool 
 	progress state, so can be safely used to indicate negative progress.
 		Inputs:
 			percent: The percent to set the bar to. In range 0-1.0, and silently forced 
-				to 0 or 1.0 if set outside this range.
+				to 0 or 1.0 if set outside this range. This will always be rounded down,
+				so you only get 100% if you explicitly call 100%.
 			bar: A progress_bar_t for the particular progress bar that you want to update
 */
 int
 update_progress(double percent, progress_bar_t *bar){
 	int progress;
 	int display_percent;
-	//tmp only has to be big enough to hold a string with 3 digits
+	//tmp only has to be big enough to hold a string with 3 digits, we enforce this with the limit
+	//check on percent.
 	char tmp[]="100";
 	if(percent > 1.0f){
 		percent = 1.0f;
@@ -73,8 +75,10 @@ update_progress(double percent, progress_bar_t *bar){
 		percent = 0.0f;
 	}
 	if (bar->verbose == true){
+		//progress will be the number of characters we fill with the bar_char for this particular
+		//bar in this particular update.
 		progress = floor((bar->width-6)*percent);
-		//Use springf to turn our display_percent into a nice string, then copy only the first 3
+		//Use snprintf to turn our display_percent into a nice string, then copy only the first 3
 		//characters to bar_string so we don't prematurely terminate the bar_string
 		display_percent = ((int)(percent * 100));
 		if (0 > snprintf(tmp, sizeof(tmp), "%3i", display_percent)){
@@ -91,6 +95,8 @@ update_progress(double percent, progress_bar_t *bar){
 	
 	printf("\r%s", bar->bar_string);
 	if (percent == 1.0f){
+		//Handle the last line, so the user doesn't have to insert a leading \n on the next print
+		//Maybe this should be removed to make the whole routine more flexible?
 		printf("\n");
 	}
 	fflush(stdout);
